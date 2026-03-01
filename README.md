@@ -21,6 +21,7 @@ This repository is an MVP foundation scaffold with:
 - Starter workflow/policy/channel modules.
 - Starter automated tests.
 - CI checks for quality, migration smoke tests, and schema diff checks.
+- Secondary ChatGPT companion MCP surface for internal operator/caregiver workflows.
 
 ## Product Focus (MVP)
 
@@ -49,10 +50,119 @@ Main components:
 6. LLM Runtime
 7. Audit and Observability
 8. Operator API and Console backend
+9. ChatGPT Companion MCP surface (secondary)
 
 High-level diagram and sequence flows:
 - [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md)
 - [docs/architecture/diagrams.md](docs/architecture/diagrams.md)
+
+## Architecture Diagrams (Inline)
+
+Source-of-truth diagrams are maintained in `docs/architecture/diagrams.md`. The blocks below mirror that source for quick root-level visibility.
+
+### High-Level Architecture
+
+```mermaid
+flowchart LR
+U["User / Caregiver"] --> CH["SMS / WhatsApp / Voice"]
+CH --> GW["Channel Gateway"]
+GW --> ORCH["Conversation Orchestrator"]
+ORCH --> WF["Workflow Engine (BullMQ)"]
+WF --> RQ["Redis Queue + DLQ"]
+ORCH --> RISK["Policy & Risk Engine"]
+ORCH --> MEM["Memory Service"]
+ORCH --> LLM["LLM Runtime"]
+ORCH --> NOTIF["Notification Policy Service"]
+ORCH --> DB["Postgres (Canonical Timeline)"]
+ORCH --> AUD["Audit + Observability"]
+AUD --> OPS["Operator API / Console"]
+```
+
+### Sequence: "Call me"
+
+```mermaid
+sequenceDiagram
+participant User
+participant SMS as SMS/WA Channel
+participant GW as Gateway
+participant OR as Orchestrator
+participant Q as BullMQ
+participant VO as Voice Adapter
+participant TH as Thread Store
+
+User->>SMS: "Call me"
+SMS->>GW: inbound webhook
+GW->>OR: ingestMessage(normalized)
+OR->>TH: append MessageEvent + idempotency check
+OR->>Q: enqueue requestCallBack
+Q->>VO: place outbound PSTN call
+VO-->>Q: call status (answered/missed)
+alt answered
+Q->>OR: VoiceSession completed + transcript
+OR->>TH: append post-call summary event
+OR->>SMS: send concise summary in origin thread
+else missed
+Q->>VO: retry by policy
+VO-->>OR: still missed
+OR->>SMS: fallback text with reschedule options
+end
+```
+
+### Sequence: Scam Triage
+
+```mermaid
+sequenceDiagram
+participant User
+participant GW as Gateway
+participant OR as Orchestrator
+participant RE as Risk Engine
+participant WF as Workflow
+participant CC as Care Circle
+participant TH as Thread
+
+User->>GW: forwards suspicious message/email text
+GW->>OR: ingestMessage
+OR->>TH: append event
+OR->>WF: startWorkflow("scam_triage")
+WF->>RE: runRiskAssessment(content, context)
+RE-->>WF: tier + signals + actions
+WF->>TH: write RiskAssessment + guidance response
+WF->>User: send risk rating + do/do-not list
+alt Tier 2 and consent enabled
+WF->>CC: triggerCareCircleAlert
+CC-->>TH: append alert audit event
+end
+```
+
+### Sequence: Troubleshooting with Escalation
+
+```mermaid
+sequenceDiagram
+participant User
+participant OR as Orchestrator
+participant WF as Troubleshoot Workflow
+participant LLM as LLM Runtime
+participant VO as Voice Adapter
+participant TH as Thread
+
+User->>OR: "My Wi-Fi won't connect"
+OR->>WF: startWorkflow("troubleshoot")
+WF->>LLM: generate step 1 diagnostic
+WF->>User: single clear step
+User-->>WF: completion status
+loop until resolved or confusion threshold hit
+WF->>LLM: next best step
+WF->>User: one step + confirmation prompt
+User-->>WF: done / confused / failed
+end
+alt resolved
+WF->>TH: completion summary + memory updates
+WF->>User: concise completion summary
+else repeated confusion/failure
+WF->>VO: requestCallBack
+VO-->>TH: call outcome + post-call summary
+end
+```
 
 ## Repository Structure
 
@@ -61,6 +171,7 @@ apps/
   api/                 # Internal API scaffold + OpenAPI + API tests
   worker/              # Async workflow worker scaffold
   operator-console/    # Operator visibility surface scaffold
+  chatgpt-mcp/         # Secondary ChatGPT Apps SDK-compatible MCP adapter
 packages/
   contracts/           # Typed API envelopes and request/response contracts
   policy-engine/       # Risk tiering and policy guard logic
@@ -83,6 +194,7 @@ docs/
   engineering/         # Test strategy
   plans/               # Milestone implementation plans
   operations/          # Local/staging runbook
+  apps/                # Companion app surface docs
 scripts/
   db/                  # Migration apply, smoke test, schema snapshot and diff checks
 ```
@@ -107,7 +219,13 @@ docker compose -f infra/docker-compose.yml up -d
 npm run dev
 ```
 
-3. Run project checks:
+3. Run ChatGPT companion surface (secondary):
+
+```bash
+npm run dev:chatgpt-mcp
+```
+
+4. Run project checks:
 
 ```bash
 npm run lint
@@ -186,6 +304,13 @@ npm run db:schema:snapshot
 Standard envelope:
 - Success: `{ ok: true, data, requestId, schemaVersion }`
 - Error: `{ ok: false, error: { code, message, retryable, details }, requestId, schemaVersion }`
+
+## ChatGPT Companion Surface
+
+- Companion architecture and usage: [docs/apps/chatgpt-companion-surface.md](docs/apps/chatgpt-companion-surface.md)
+- MCP package: `apps/chatgpt-mcp`
+- Current scope: read tools + constrained writes (`request_callback`, `append_escalation_note`)
+- Auth mode: no-auth in dev, OAuth-ready write-gating shape for staging/prod
 
 ## Risk and Safety Policy
 

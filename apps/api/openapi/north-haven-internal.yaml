@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: North Haven Internal API
   version: 1.0.0
-  description: Internal contracts for channel ingestion, workflow orchestration, risk policy, memory, notifications, and Care Circle alerts.
+  description: Internal contracts for channel ingestion, workflow orchestration, risk policy, memory, notifications, Care Circle alerts, and companion MCP read/write surfaces.
 servers:
   - url: https://internal-api.northhaven.local
 components:
@@ -14,6 +14,39 @@ components:
       schema:
         type: string
         example: 1.0.0
+    ThreadId:
+      name: threadId
+      in: path
+      required: true
+      schema:
+        type: string
+    RiskAssessmentId:
+      name: riskAssessmentId
+      in: path
+      required: true
+      schema:
+        type: string
+    WorkflowRunId:
+      name: workflowRunId
+      in: path
+      required: true
+      schema:
+        type: string
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+    TimelineLimit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
   schemas:
     ApiError:
       type: object
@@ -83,12 +116,71 @@ components:
           type: string
         sourceThreadId:
           type: string
+        reason:
+          type: string
+    CallbackRequestData:
+      type: object
+      required: [callbackRequestId, userId, sourceThreadId, targetSlaSeconds, state]
+      properties:
+        callbackRequestId:
+          type: string
+        userId:
+          type: string
+        sourceThreadId:
+          type: string
+        targetSlaSeconds:
+          type: integer
+        state:
+          type: string
+          enum: [queued]
+        conversationEvent:
+          type: object
+          properties:
+            resolutionType:
+              type: string
+              enum: [self_resolved, callback_resolved, caregiver_assisted]
+            handoffReason:
+              type: string
     RiskAssessmentRequest:
       type: object
       required: [content]
       properties:
         content:
           type: string
+        context:
+          type: object
+          additionalProperties: true
+    RiskAssessmentResult:
+      type: object
+      required: [tier, label, why, doNext, doNot, riskSignals, recommendedActions, escalationRecommendation]
+      properties:
+        tier:
+          type: integer
+          enum: [0, 1, 2]
+        label:
+          type: string
+          enum: [low, medium, high]
+        why:
+          type: string
+        doNext:
+          type: array
+          items:
+            type: string
+        doNot:
+          type: array
+          items:
+            type: string
+        riskSignals:
+          type: array
+          items:
+            type: string
+        recommendedActions:
+          type: array
+          items:
+            type: string
+        escalationRecommendation:
+          type: string
+          enum: [none, callback, care_circle_alert]
         context:
           type: object
           additionalProperties: true
@@ -138,19 +230,268 @@ components:
         message:
           type: string
     CareCircleAlertRequest:
+      oneOf:
+        - type: object
+          required: [userId, riskTier, hasConsent]
+          properties:
+            userId:
+              type: string
+            riskTier:
+              type: integer
+              enum: [0, 1, 2]
+            hasConsent:
+              type: boolean
+              const: false
+            channel:
+              type: string
+              enum: [sms, whatsapp, voice]
+        - type: object
+          required: [userId, riskTier, hasConsent, consentArtifactId, alertReason, initiatedBy]
+          properties:
+            userId:
+              type: string
+            riskTier:
+              type: integer
+              enum: [0, 1, 2]
+            hasConsent:
+              type: boolean
+              const: true
+            channel:
+              type: string
+              enum: [sms, whatsapp, voice]
+            consentArtifactId:
+              type: string
+            alertReason:
+              type: string
+            initiatedBy:
+              type: string
+              enum: [user_request, policy_trigger]
+    CareCircleAlertData:
       type: object
-      required: [userId, riskTier, hasConsent]
+      required: [alertId, sent, channel, consentArtifactId, alertReason, initiatedBy]
       properties:
-        userId:
+        alertId:
           type: string
-        riskTier:
-          type: integer
-          enum: [0, 1, 2]
-        hasConsent:
+        sent:
           type: boolean
         channel:
           type: string
           enum: [sms, whatsapp, voice]
+        consentArtifactId:
+          type: string
+        alertReason:
+          type: string
+        initiatedBy:
+          type: string
+          enum: [user_request, policy_trigger]
+    TimelineEvent:
+      type: object
+      required: [occurredAt, channel, direction, kind, summary]
+      properties:
+        occurredAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
+          enum: [sms, whatsapp, voice]
+        direction:
+          type: string
+          enum: [inbound, outbound, system]
+        kind:
+          type: string
+          enum: [user_message, assistant_message, risk_assessment, voice_summary, operator_note]
+        summary:
+          type: string
+        riskTier:
+          type: integer
+          enum: [0, 1, 2]
+        resolutionType:
+          type: string
+          enum: [self_resolved, callback_resolved, caregiver_assisted]
+        handoffReason:
+          type: string
+    ThreadTimelineData:
+      type: object
+      required: [threadId, userId, status, lastUpdatedAt, events]
+      properties:
+        threadId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          enum: [open, closed, pending]
+        lastUpdatedAt:
+          type: string
+          format: date-time
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineEvent'
+    RiskExplanationData:
+      type: object
+      required: [riskAssessmentId, tier, label, why, doNext, dontDo, assessedAt]
+      properties:
+        riskAssessmentId:
+          type: string
+        threadId:
+          type: string
+        tier:
+          type: integer
+          enum: [0, 1, 2]
+        label:
+          type: string
+          enum: [Low, Medium, High]
+        why:
+          type: array
+          items:
+            type: string
+        doNext:
+          type: array
+          items:
+            type: string
+        dontDo:
+          type: array
+          items:
+            type: string
+        assessedAt:
+          type: string
+          format: date-time
+    WorkflowStatusData:
+      type: object
+      required: [workflowRunId, type, status, currentStep, nextAction, startedAt, updatedAt]
+      properties:
+        workflowRunId:
+          type: string
+        type:
+          type: string
+          enum: [troubleshoot, scam_triage, callback]
+        status:
+          type: string
+          enum: [queued, in_progress, blocked, completed, failed]
+        currentStep:
+          type: string
+        nextAction:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    UserSupportSummaryData:
+      type: object
+      required: [userId, displayName, personaVoiceStyle, preferredChannel, activeWorkflowsOpen, tier2Incidents30d, lastResolutionAt]
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        personaVoiceStyle:
+          type: string
+          enum: [Alfred, Ally]
+        preferredChannel:
+          type: string
+          enum: [sms, whatsapp, voice]
+        quietHours:
+          type: object
+          nullable: true
+          properties:
+            start:
+              type: string
+            end:
+              type: string
+            timezone:
+              type: string
+        activeWorkflowsOpen:
+          type: integer
+          minimum: 0
+        tier2Incidents30d:
+          type: integer
+          minimum: 0
+        lastResolutionAt:
+          type: string
+          nullable: true
+          format: date-time
+    AppendEscalationNoteRequest:
+      type: object
+      required: [operatorId, note]
+      properties:
+        operatorId:
+          type: string
+        note:
+          type: string
+          minLength: 1
+          maxLength: 500
+    AppendEscalationNoteData:
+      type: object
+      required: [threadId, operatorId, note, appendedAt]
+      properties:
+        threadId:
+          type: string
+        operatorId:
+          type: string
+        note:
+          type: string
+        appendedAt:
+          type: string
+          format: date-time
+    ThreadTimelineSuccessEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ThreadTimelineData'
+    RiskExplanationSuccessEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/RiskExplanationData'
+    WorkflowStatusSuccessEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/WorkflowStatusData'
+    UserSupportSummarySuccessEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/UserSupportSummaryData'
+    AppendEscalationNoteSuccessEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AppendEscalationNoteData'
+    CallbackRequestSuccessEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CallbackRequestData'
+    RiskAssessmentSuccessEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/RiskAssessmentResult'
+    CareCircleAlertSuccessEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CareCircleAlertData'
   responses:
     ApiResponse:
       description: Standard API response envelope
@@ -188,10 +529,17 @@ paths:
               $ref: '#/components/schemas/CallbackRequest'
       responses:
         '200':
-          $ref: '#/components/responses/ApiResponse'
+          description: Callback request response envelope
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/CallbackRequestSuccessEnvelope'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
   /internal/risk:assess:
     post:
       summary: Run risk assessment
+      description: For Tier 2 without checkpoint confirmation, returns RISK_CONFIRMATION_REQUIRED with structured assessment payload in error.details.assessment.
       parameters:
         - $ref: '#/components/parameters/SchemaVersion'
       requestBody:
@@ -202,7 +550,13 @@ paths:
               $ref: '#/components/schemas/RiskAssessmentRequest'
       responses:
         '200':
-          $ref: '#/components/responses/ApiResponse'
+          description: Risk assessment response envelope
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RiskAssessmentSuccessEnvelope'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
   /internal/workflows:start:
     post:
       summary: Start workflow
@@ -272,4 +626,92 @@ paths:
               $ref: '#/components/schemas/CareCircleAlertRequest'
       responses:
         '200':
-          $ref: '#/components/responses/ApiResponse'
+          description: Care Circle alert response envelope
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/CareCircleAlertSuccessEnvelope'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+  /internal/threads/{threadId}/timeline:
+    get:
+      summary: Get minimized thread timeline for companion surfaces
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+        - $ref: '#/components/parameters/ThreadId'
+        - $ref: '#/components/parameters/TimelineLimit'
+      responses:
+        '200':
+          description: Thread timeline response envelope
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ThreadTimelineSuccessEnvelope'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+  /internal/risks/{riskAssessmentId}:
+    get:
+      summary: Get risk explanation details
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+        - $ref: '#/components/parameters/RiskAssessmentId'
+      responses:
+        '200':
+          description: Risk explanation response envelope
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RiskExplanationSuccessEnvelope'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+  /internal/workflows/{workflowRunId}:
+    get:
+      summary: Get workflow status details
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+        - $ref: '#/components/parameters/WorkflowRunId'
+      responses:
+        '200':
+          description: Workflow status response envelope
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/WorkflowStatusSuccessEnvelope'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+  /internal/users/{userId}/summary:
+    get:
+      summary: Get user support summary for operator/caregiver usage
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User support summary response envelope
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/UserSupportSummarySuccessEnvelope'
+                  - $ref: '#/components/schemas/ErrorEnvelope'
+  /internal/threads/{threadId}:appendEscalationNote:
+    post:
+      summary: Append constrained escalation note to thread
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+        - $ref: '#/components/parameters/ThreadId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppendEscalationNoteRequest'
+      responses:
+        '200':
+          description: Append escalation note response envelope
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AppendEscalationNoteSuccessEnvelope'
+                  - $ref: '#/components/schemas/ErrorEnvelope'

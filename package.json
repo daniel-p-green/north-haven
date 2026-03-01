@@ -9,7 +9,9 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace @north-haven/api",
-    "test": "node --test apps/api/test/unit/contracts.spec.js apps/api/test/integration/policy.spec.js apps/api/test/e2e/call-me.spec.js apps/worker/test/worker.spec.js",
+    "dev:chatgpt-mcp": "npm run dev --workspace @north-haven/chatgpt-mcp",
+    "test": "node --test apps/api/test/unit/contracts.spec.js apps/api/test/integration/policy.spec.js apps/api/test/e2e/call-me.spec.js apps/worker/test/worker.spec.js apps/chatgpt-mcp/test/unit/tool-schema.spec.js apps/chatgpt-mcp/test/unit/metadata-policy.spec.js apps/chatgpt-mcp/test/integration/mcp-tools.spec.js",
+    "test:chatgpt-mcp": "npm run test --workspace @north-haven/chatgpt-mcp",
     "lint": "node -e \"console.log('lint scaffold: configure eslint in next milestone')\"",
     "build": "npm run build --workspaces --if-present",
     "db:migrate:smoke": "bash scripts/db/migration_smoke_test.sh",

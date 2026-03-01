@@ -48,6 +48,17 @@ Enforcement:
 - Persona style (Alfred/Ally) only changes tone and voice style.
 - Safety behavior must remain identical across persona styles.
 
+## ChatGPT Companion Tool Gating
+
+- Companion surface is secondary and operator-oriented.
+- Read tools are default-safe and must remain data-minimized.
+- Write tools are constrained to:
+  - callback requests
+  - escalation note append
+- In staging/prod OAuth mode, write tools require validated access token context.
+- Tier 2 restrictions remain enforced through the same policy engine used by SMS/WhatsApp/voice.
+- Tool responses must not leak internal trace IDs, provider IDs, or debug/session metadata.
+
 ## Failure Modes and Recovery
 
 - Missing consent for Tier 2 alerts:
@@ -59,3 +70,6 @@ Enforcement:
 - Duplicate ingress event:
   - Detect idempotency conflict.
   - Skip duplicate side effects.
+- Companion write call without OAuth in enforced mode:
+  - Block write execution.
+  - Return explicit auth-required error.

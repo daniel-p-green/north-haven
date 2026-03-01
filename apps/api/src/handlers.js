@@ -36,7 +36,7 @@ export function ingestMessage(channel, payload) {
   return ok({ normalized: normalized.data, workflowType });
 }
 
-export function requestCallBack(userId, sourceThreadId) {
+export function requestCallBack(userId, sourceThreadId, reason = null) {
   if (!userId || !sourceThreadId) {
     return err('INVALID_PAYLOAD', 'userId and sourceThreadId are required');
   }
@@ -45,8 +45,12 @@ export function requestCallBack(userId, sourceThreadId) {
     callbackRequestId: `cb_${userId}_${Date.now()}`,
     userId,
     sourceThreadId,
+    reason,
     targetSlaSeconds: 45,
-    state: 'queued'
+    state: 'queued',
+    conversationEvent: {
+      handoffReason: reason || 'user_requested_callback'
+    }
   });
 }
 
@@ -60,7 +64,8 @@ export function runRiskAssessment(content, context = {}) {
 
   if (!tier2Check.allowed) {
     return err('RISK_CONFIRMATION_REQUIRED', 'Tier 2 requires reconfirmation and friction checkpoint', false, {
-      checkpoint: tier2Check
+      checkpoint: tier2Check,
+      assessment: result
     });
   }
 
@@ -128,7 +133,7 @@ export function triggerCareCircleAlert(payload) {
     return err('INVALID_PAYLOAD', 'userId and riskTier are required');
   }
 
-  if (payload.riskTier < 2) {
+  if (payload.riskTier !== 2) {
     return err('POLICY_BLOCKED', 'Care Circle alerts are only sent for Tier 2 in MVP');
   }
 
@@ -136,9 +141,24 @@ export function triggerCareCircleAlert(payload) {
     return err('CONSENT_REQUIRED', 'Care Circle consent is required for alerting');
   }
 
+  if (payload.channel && !['sms', 'whatsapp', 'voice'].includes(payload.channel)) {
+    return err('INVALID_PAYLOAD', 'channel must be sms, whatsapp, or voice');
+  }
+
+  if (!payload.consentArtifactId || !payload.alertReason || !payload.initiatedBy) {
+    return err('INVALID_PAYLOAD', 'consentArtifactId, alertReason, and initiatedBy are required when consent is true');
+  }
+
+  if (!['user_request', 'policy_trigger'].includes(payload.initiatedBy)) {
+    return err('INVALID_PAYLOAD', 'initiatedBy must be user_request or policy_trigger');
+  }
+
   return ok({
     alertId: `cc_${Date.now()}`,
     sent: true,
-    channel: payload.channel || 'sms'
+    channel: payload.channel || 'sms',
+    consentArtifactId: payload.consentArtifactId,
+    alertReason: payload.alertReason,
+    initiatedBy: payload.initiatedBy
   });
 }

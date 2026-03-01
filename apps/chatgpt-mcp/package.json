@@ -1,0 +1,11 @@
+{
+  "name": "@north-haven/chatgpt-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "test": "node --test test/unit/tool-schema.spec.js test/unit/metadata-policy.spec.js test/integration/mcp-tools.spec.js",
+    "build": "node -e \"console.log('chatgpt-mcp build scaffold complete')\""
+  }
+}
