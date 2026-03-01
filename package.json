@@ -11,7 +11,11 @@
     "dev": "npm run dev --workspace @north-haven/api",
     "test": "node --test apps/api/test/unit/contracts.spec.js apps/api/test/integration/policy.spec.js apps/api/test/e2e/call-me.spec.js apps/worker/test/worker.spec.js",
     "lint": "node -e \"console.log('lint scaffold: configure eslint in next milestone')\"",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "db:migrate:smoke": "bash scripts/db/migration_smoke_test.sh",
+    "db:schema:snapshot": "bash scripts/db/generate_schema_snapshot.sh",
+    "db:schema:check": "bash scripts/db/check_schema_diff.sh",
+    "ci": "npm run lint && npm run test && npm run build && npm run db:migrate:smoke && npm run db:schema:check"
   },
   "engines": {
     "node": ">=20"
