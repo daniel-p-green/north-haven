@@ -1,0 +1,25 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16
+    container_name: north-haven-postgres
+    environment:
+      POSTGRES_USER: north_haven
+      POSTGRES_PASSWORD: north_haven_dev
+      POSTGRES_DB: north_haven
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: north-haven-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

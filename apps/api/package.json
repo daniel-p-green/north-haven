@@ -1,0 +1,10 @@
+{
+  "name": "@north-haven/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "build": "node -e \"console.log('api build scaffold complete')\""
+  }
+}

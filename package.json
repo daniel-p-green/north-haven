@@ -1,0 +1,19 @@
+{
+  "name": "north-haven",
+  "version": "0.1.0",
+  "private": true,
+  "description": "North Haven by OpenClaw - family-safe, voice-first, messaging-native AI concierge",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @north-haven/api",
+    "test": "node --test apps/api/test/unit/contracts.spec.js apps/api/test/integration/policy.spec.js apps/api/test/e2e/call-me.spec.js apps/worker/test/worker.spec.js",
+    "lint": "node -e \"console.log('lint scaffold: configure eslint in next milestone')\"",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

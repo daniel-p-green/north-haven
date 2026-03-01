@@ -1,0 +1,9 @@
+{
+  "name": "@north-haven/operator-console",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node -e \"console.log('operator console scaffold: implement in milestone 6')\"",
+    "build": "node -e \"console.log('operator console build scaffold complete')\""
+  }
+}

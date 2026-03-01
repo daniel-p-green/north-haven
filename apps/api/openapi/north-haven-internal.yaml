@@ -1,0 +1,275 @@
+openapi: 3.1.0
+info:
+  title: North Haven Internal API
+  version: 1.0.0
+  description: Internal contracts for channel ingestion, workflow orchestration, risk policy, memory, notifications, and Care Circle alerts.
+servers:
+  - url: https://internal-api.northhaven.local
+components:
+  parameters:
+    SchemaVersion:
+      name: X-NH-Schema-Version
+      in: header
+      required: true
+      schema:
+        type: string
+        example: 1.0.0
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message, retryable]
+      properties:
+        code:
+          type: string
+          enum:
+            - INVALID_PAYLOAD
+            - UNSUPPORTED_CHANNEL
+            - IDEMPOTENCY_CONFLICT
+            - CONSENT_REQUIRED
+            - RISK_CONFIRMATION_REQUIRED
+            - POLICY_BLOCKED
+            - RATE_LIMITED
+            - UPSTREAM_PROVIDER_ERROR
+            - INTERNAL_ERROR
+        message:
+          type: string
+        retryable:
+          type: boolean
+        details:
+          type: object
+          additionalProperties: true
+    SuccessEnvelope:
+      type: object
+      required: [ok, data, requestId, schemaVersion]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          type: object
+          additionalProperties: true
+        requestId:
+          type: string
+        schemaVersion:
+          type: string
+    ErrorEnvelope:
+      type: object
+      required: [ok, error, requestId, schemaVersion]
+      properties:
+        ok:
+          type: boolean
+          const: false
+        error:
+          $ref: '#/components/schemas/ApiError'
+        requestId:
+          type: string
+        schemaVersion:
+          type: string
+    IngestRequest:
+      type: object
+      required: [channel, payload]
+      properties:
+        channel:
+          type: string
+          enum: [sms, whatsapp, voice]
+        payload:
+          type: object
+          additionalProperties: true
+    CallbackRequest:
+      type: object
+      required: [userId, sourceThreadId]
+      properties:
+        userId:
+          type: string
+        sourceThreadId:
+          type: string
+    RiskAssessmentRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        context:
+          type: object
+          additionalProperties: true
+    StartWorkflowRequest:
+      type: object
+      required: [type, context]
+      properties:
+        type:
+          type: string
+          enum: [troubleshoot, scam_triage, callback]
+        context:
+          type: object
+          additionalProperties: true
+    MemoryWriteRequest:
+      type: object
+      required: [userId, category, key, value]
+      properties:
+        userId:
+          type: string
+        category:
+          type: string
+        key:
+          type: string
+        value:
+          type: string
+        doNotSave:
+          type: boolean
+    MemoryReadRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+        category:
+          type: string
+    ProgressUpdateRequest:
+      type: object
+      required: [userId, threadId, status, message]
+      properties:
+        userId:
+          type: string
+        threadId:
+          type: string
+        status:
+          type: string
+          enum: [started, need_input, completed]
+        message:
+          type: string
+    CareCircleAlertRequest:
+      type: object
+      required: [userId, riskTier, hasConsent]
+      properties:
+        userId:
+          type: string
+        riskTier:
+          type: integer
+          enum: [0, 1, 2]
+        hasConsent:
+          type: boolean
+        channel:
+          type: string
+          enum: [sms, whatsapp, voice]
+  responses:
+    ApiResponse:
+      description: Standard API response envelope
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/SuccessEnvelope'
+              - $ref: '#/components/schemas/ErrorEnvelope'
+paths:
+  /internal/messages:ingest:
+    post:
+      summary: Ingest inbound channel message
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/ApiResponse'
+  /internal/callbacks:request:
+    post:
+      summary: Request voice callback
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallbackRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/ApiResponse'
+  /internal/risk:assess:
+    post:
+      summary: Run risk assessment
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskAssessmentRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/ApiResponse'
+  /internal/workflows:start:
+    post:
+      summary: Start workflow
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartWorkflowRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/ApiResponse'
+  /internal/memory:write:
+    post:
+      summary: Write memory fact
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryWriteRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/ApiResponse'
+  /internal/memory:read:
+    post:
+      summary: Read memory facts
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryReadRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/ApiResponse'
+  /internal/notifications:progress:
+    post:
+      summary: Send policy-aware progress update
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressUpdateRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/ApiResponse'
+  /internal/care-circle:alert:
+    post:
+      summary: Trigger Care Circle alert
+      parameters:
+        - $ref: '#/components/parameters/SchemaVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CareCircleAlertRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/ApiResponse'

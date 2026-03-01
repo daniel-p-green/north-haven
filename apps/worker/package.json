@@ -1,0 +1,10 @@
+{
+  "name": "@north-haven/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/worker.js",
+    "build": "node -e \"console.log('worker build scaffold complete')\""
+  }
+}
