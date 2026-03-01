@@ -27,6 +27,7 @@ Out of scope:
 - MCP server package: `apps/chatgpt-mcp`
 - Adapter role: transforms MCP `tools/call` into existing internal API contracts.
 - Source-of-truth business logic remains in internal services and policy layer.
+- All model-mediated language in this surface inherits the same guardrailed OpenClaw runtime profile.
 
 ## Tool Metadata and Policy
 

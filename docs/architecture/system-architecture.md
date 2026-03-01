@@ -3,6 +3,7 @@
 ## Overview
 
 North Haven is built as a message-native, voice-escalation architecture with one canonical timeline per conversation thread.
+All assistant reasoning and generation flows through a guardrailed OpenClaw runtime profile.
 
 Core services:
 1. Channel Gateway
@@ -10,7 +11,7 @@ Core services:
 3. Policy and Risk Engine
 4. Memory Service
 5. Workflow Engine
-6. LLM Runtime
+6. Guardrailed OpenClaw Runtime
 7. Audit and Observability
 8. Operator API and Console backend
 
@@ -29,10 +30,15 @@ Core services:
 - Routes events to workflow engine by intent and risk state.
 - Coordinates progress notifications under policy.
 - Produces post-call continuity summaries.
+- Emits escalation analytics fields (`handoffReason`, `resolutionType`) for workflow outcomes.
 
 ### 3) Policy and Risk Engine
 
 - Evaluates Tier 0/1/2 risk for suspicious content and high-consequence actions.
+- Returns structured risk output including:
+  - `riskSignals[]`
+  - `recommendedActions[]`
+  - `escalationRecommendation`
 - Enforces Tier 2 controls:
   - reconfirmation
   - friction phrase checkpoint
@@ -55,9 +61,10 @@ Core services:
 - Persists deterministic state transitions in `WorkflowRun`.
 - Supports callback, scam triage, and troubleshooting flows.
 
-### 6) LLM Runtime
+### 6) Guardrailed OpenClaw Runtime
 
 - Provides role-safe system prompts and task prompts.
+- Enforces OpenClaw guardrail policy pack before any outward response or tool result.
 - Enforces AI identity disclosure.
 - Applies PII redaction for logs and summarized outputs.
 

@@ -2,17 +2,34 @@
 
 Date: 2026-03-01
 Repository: north-haven
-Working stack: TypeScript backend, Postgres, Redis/BullMQ, OpenAPI contracts
+Working stack: TypeScript backend, Postgres, Redis/BullMQ, OpenAPI contracts, guardrailed OpenClaw runtime layer
 
 ## Problem Statement
 
 Families need immediate help for common tech issues and scam risk, but existing support channels are fragmented and often hard to trust. North Haven creates a single trusted contact in existing messaging and phone channels, delivering safe and calm support without forcing a new app.
+
+## Primary Market Narrative
+
+North Haven is a family-safe incident concierge for older adults in SMS, WhatsApp, and voice callback, with consent-based caregiver backup for high-risk moments.
 
 ## Goals
 
 - Deliver message-native support for troubleshooting and scam triage in SMS and WhatsApp.
 - Provide reliable callback escalation with post-call continuity in the same thread.
 - Enforce consent, risk-tier policy, and calm notification defaults by design.
+- Route all AI outputs through a guardrailed OpenClaw runtime profile.
+
+## Wedge Strategy (Sequenced)
+
+1. Entry wedge: scam/fraud triage for urgent trust moments.
+2. Retention wedge: everyday tech troubleshooting in familiar channels.
+3. Expansion wedge: caregiver coordination and Care Circle alerting with explicit consent.
+
+## Go-To-Market Shape (Hybrid)
+
+- B2B2C: Medicare Advantage plans, caregiver programs, and aging-service pilots.
+- D2C: family subscriptions centered on safety ROI and peace-of-mind.
+- Shared product core: one policy engine and one channel/timeline foundation across both paths.
 
 ## Non-Goals
 
@@ -37,6 +54,9 @@ Families need immediate help for common tech issues and scam risk, but existing 
 4. Consent-based Care Circle alerting for Tier 2 risk.
 5. Memory controls with commands for remember/forget/no-save/pause alerts.
 6. Operator visibility for timeline replay, risk flags, escalation traces, and audit events.
+7. Risk assessment output includes: `riskSignals[]`, `recommendedActions[]`, and `escalationRecommendation`.
+8. Care Circle alerts capture consent evidence metadata: `consentArtifactId`, `alertReason`, `initiatedBy`.
+9. Conversation events include escalation analytics fields: `resolutionType` and `handoffReason`.
 
 ### Non-Functional
 
@@ -50,14 +70,19 @@ Families need immediate help for common tech issues and scam risk, but existing 
 - 6th-8th grade readability and plain-language templates.
 4. Security:
 - PII-redacted logs, immutable audit events, explicit consent gates.
+- Guardrailed OpenClaw safety policy pack applied to all model output.
 
 ## Acceptance Criteria
 
 1. Given a user sends “call me,” when message is ingested, then callback request is queued and post-call summary is sent in origin thread.
 2. Given suspicious content is forwarded, when risk workflow runs, then system returns Low/Medium/High risk with reasons, do/do-not guidance, and Tier 2 alert flow when consent exists.
-3. Given troubleshooting fails repeatedly, when confusion threshold is reached, then callback escalation triggers automatically.
-4. Given do-not-save is active, when memory write is attempted, then write is blocked with policy response.
-5. Given progress update status is invalid, when sendProgressUpdate is called, then request is rejected by policy guard.
+3. Given suspicious content is forwarded, when risk workflow runs, then response includes `riskSignals[]`, `recommendedActions[]`, and `escalationRecommendation`.
+4. Given Tier 2 alert with consent is requested, when alert call executes, then `consentArtifactId`, `alertReason`, and `initiatedBy` are required and logged.
+5. Given callback escalation is queued, when conversation event is recorded, then `handoffReason` is populated for analytics.
+6. Given a workflow is resolved, when completion event is recorded, then `resolutionType` is captured as one of `self_resolved`, `callback_resolved`, `caregiver_assisted`.
+7. Given troubleshooting fails repeatedly, when confusion threshold is reached, then callback escalation triggers automatically.
+8. Given do-not-save is active, when memory write is attempted, then write is blocked with policy response.
+9. Given progress update status is invalid, when sendProgressUpdate is called, then request is rejected by policy guard.
 
 ## UX Notes
 
@@ -70,6 +95,11 @@ Families need immediate help for common tech issues and scam risk, but existing 
 - Rollout strategy: internal simulation -> staged pilot -> invite-only family beta.
 - Success metric: safe first-resolution rate.
 - Guardrail metric: high-risk false-negative rate and escalation latency.
+- Pilot thresholds:
+  - first-contact safe resolution rate target: >= 50%
+  - caregiver opt-in rate target: >= 35% for eligible users
+  - caregiver opt-out/complaint rate target: <= 5%
+  - 30-day D2C retention target: >= 30%
 
 ## Packaging Hypothesis and Unit Economics
 

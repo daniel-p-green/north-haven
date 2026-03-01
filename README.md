@@ -1,6 +1,7 @@
 # North Haven by OpenClaw
 
 North Haven is a family-safe, voice-first, messaging-native AI concierge for older adults and their families.
+It runs on a guardrailed version of OpenClaw as its foundational AI runtime.
 
 Core product principle:
 - Do not force users into a new app.
@@ -47,7 +48,7 @@ Main components:
 3. Policy and Risk Engine
 4. Memory Service
 5. Workflow Engine (BullMQ + Redis)
-6. LLM Runtime
+6. Guardrailed OpenClaw Runtime
 7. Audit and Observability
 8. Operator API and Console backend
 9. ChatGPT Companion MCP surface (secondary)
@@ -71,7 +72,7 @@ ORCH --> WF["Workflow Engine (BullMQ)"]
 WF --> RQ["Redis Queue + DLQ"]
 ORCH --> RISK["Policy & Risk Engine"]
 ORCH --> MEM["Memory Service"]
-ORCH --> LLM["LLM Runtime"]
+ORCH --> LLM["Guardrailed OpenClaw Runtime"]
 ORCH --> NOTIF["Notification Policy Service"]
 ORCH --> DB["Postgres (Canonical Timeline)"]
 ORCH --> AUD["Audit + Observability"]
@@ -141,7 +142,7 @@ sequenceDiagram
 participant User
 participant OR as Orchestrator
 participant WF as Troubleshoot Workflow
-participant LLM as LLM Runtime
+participant LLM as Guardrailed OpenClaw Runtime
 participant VO as Voice Adapter
 participant TH as Thread
 

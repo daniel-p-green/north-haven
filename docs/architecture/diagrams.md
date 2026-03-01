@@ -11,7 +11,7 @@ ORCH --> WF["Workflow Engine (BullMQ)"]
 WF --> RQ["Redis Queue + DLQ"]
 ORCH --> RISK["Policy & Risk Engine"]
 ORCH --> MEM["Memory Service"]
-ORCH --> LLM["LLM Runtime"]
+ORCH --> LLM["Guardrailed OpenClaw Runtime"]
 ORCH --> NOTIF["Notification Policy Service"]
 ORCH --> DB["Postgres (Canonical Timeline)"]
 ORCH --> AUD["Audit + Observability"]
@@ -81,7 +81,7 @@ sequenceDiagram
 participant User
 participant OR as Orchestrator
 participant WF as Troubleshoot Workflow
-participant LLM as LLM Runtime
+participant LLM as Guardrailed OpenClaw Runtime
 participant VO as Voice Adapter
 participant TH as Thread
 

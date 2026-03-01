@@ -6,6 +6,12 @@
 - Tier 1: moderate risk (login/account and suspicious-link cases).
 - Tier 2: high risk (money transfer pressure, identity compromise, urgent social engineering).
 
+## OpenClaw Guardrail Baseline
+
+- North Haven runs on a guardrailed version of OpenClaw for all assistant output.
+- Guardrail checks run before any user-visible response or tool result is returned.
+- Policy blocks are deny-first for prohibited actions and safety-critical uncertainty.
+
 ## Mandatory Tier 2 Controls
 
 1. Explicit reconfirmation required before continuing.

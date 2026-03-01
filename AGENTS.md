@@ -55,6 +55,8 @@ Core principle:
 
 ## Domain Guardrails
 
+- North Haven must run on a guardrailed version of OpenClaw for all model-mediated output.
+- OpenClaw guardrail checks must execute before any user-visible response or tool result is returned.
 - Always disclose AI identity in user-facing copy
 - Persona (Alfred/Ally) only changes tone/voice, never safety behavior
 - Tier 2 risk flows require reconfirmation and friction checkpoint
